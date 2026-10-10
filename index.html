@@ -42,6 +42,7 @@ h2{font-size:20px;font-weight:600;margin:24px 0 10px}
 .bal span{color:var(--soft);font-size:15px}
 .bar{height:16px;border:3px solid var(--ink);border-radius:99px;background:var(--bg);margin-top:10px;overflow:hidden}
 .bar i{display:block;height:100%;background:var(--org);transition:width .4s;border-radius:99px}
+.bal.debt{border-color:#E4574C}.bal.debt b,.bal.debt #jarlbl{color:#E4574C}
 .panel{background:var(--card);border:3px solid var(--ink);border-radius:22px;padding:14px}
 .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 button,input{font:inherit;color:var(--ink)}
@@ -59,6 +60,7 @@ input{flex:1;min-width:0;border:3px solid var(--ink);background:var(--bg);border
 .item small{display:block;color:var(--soft);margin-bottom:8px}
 .item button{width:100%;background:var(--org)}
 .bag{display:flex;gap:8px;flex-wrap:wrap}
+.bag .chip{background:var(--card);padding:6px 12px}
 .bag span{background:var(--card);border:3px solid var(--ink);border-radius:99px;padding:6px 12px}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:99px;opacity:0;transition:.3s;pointer-events:none;font-weight:500;z-index:30}
 .ov{position:fixed;inset:0;background:rgba(40,20,15,.55);display:none;align-items:flex-start;justify-content:center;padding:20px 16px;z-index:20;overflow:auto}
@@ -95,8 +97,9 @@ input{flex:1;min-width:0;border:3px solid var(--ink);background:var(--bg);border
 <path d="M76 122 Q100 122 124 122 Q122 160 100 160 Q78 160 76 122 Z" fill="#5B2E2E"/>
 <ellipse cx="100" cy="148" rx="13" ry="9" fill="#F7A8A8"/><path d="M86 123 L93 123 L89.5 132 Z" fill="#fff"/>
 </svg>
-<div class="bal"><span>today's jar</span><br><b id="bal">300</b> <span>/ 300 tygers</span>
-<div class="bar"><i id="fill" style="width:100%"></i></div></div>
+<div class="bal"><span id="jarlbl">today's jar</span><br><b id="bal">300</b> <span id="balsub">/ 300 tygers</span>
+<div class="bar"><i id="fill" style="width:100%"></i></div>
+<button data-a="editjar" style="margin-top:10px;min-height:36px;padding:4px 14px">Edit tygers</button></div>
 </div>
 
 <h2>Walk the pets</h2>
@@ -116,27 +119,27 @@ input{flex:1;min-width:0;border:3px solid var(--ink);background:var(--bg);border
 </div>
 
 <h2>Tyger shop</h2>
-<div class="shop" id="shop"></div>
 <div class="panel" style="margin-top:12px"><b>Your own item</b>
-<div class="row"><input id="cname" type="text" maxlength="30" placeholder="Item name" aria-label="Item name"><input id="cprice" type="number" min="1" inputmode="numeric" placeholder="Tygers" aria-label="Price in tygers" style="flex:0 0 100px"></div>
-<div class="row"><button class="go" id="buycustom">Buy item</button></div></div>
+<div class="row"><input id="cname" type="text" maxlength="30" placeholder="Item name (optional)" aria-label="Item name"><input id="cprice" type="number" min="1" inputmode="numeric" placeholder="Tygers" aria-label="Price in tygers" style="flex:0 0 100px"></div>
+<div class="row"><button class="go" id="buycustom">Buy item</button></div>
+<p class="note">Going over your jar puts you in debt until the next day.</p></div>
 
 <h2>Your bag</h2>
 <div class="bag" id="bag"></div>
 <div class="row"><button class="go" data-a="export">Export ticket</button><button data-a="reset">Reset day</button></div>
-<p class="note">The jar refills to 300 every new day. Steps and active minutes can push it past 300.</p>
+<p class="note">The jar refills to 300 every new day. Steps and active minutes can push it past 300. Tap a bag item to edit or remove it.</p>
 <div class="ov" id="ov"><div class="dlg" id="dlg" role="dialog" aria-modal="true"></div></div>
 <div class="toast" id="toast" role="status"></div>
 
 <script>
 var KEY="tygerTown1",CAP=300;
-var ITEMS=[{id:"flower",n:"Flower",e:"🌸",p:10},{id:"salad",n:"Salad",e:"🥗",p:30},{id:"cookie",n:"Cookie",e:"🍪",p:40},{id:"yoyo",n:"Yo-yo",e:"🪀",p:100},{id:"bow",n:"Bow",e:"🎀",p:150},{id:"teddy",n:"Teddy bear",e:"🧸",p:200}];
+var EMO=["🍓","🍰","🧁","🍩","🍪","🍫","🍭","🍡","🍙","🍜","🍕","🍔","🍟","🌮","🍣","🥐","🍦","🧋","🍉","🍑","🍒","🍇","🥝","🥞","🧇","🍿","🎀","🧸","🌸","🎈","🪀","🎁","✨","🌈"];
 function today(){return new Date().toLocaleDateString("en-CA")}
 var S={day:today(),bal:CAP,steps:0,mins:0,inv:{},cust:{},log:[],earned:0};
 try{var raw=localStorage.getItem(KEY);if(raw){var o=JSON.parse(raw);if(o&&typeof o==="object")S=o}}catch(e){}
 if(S.day!==today()){S.day=today();S.bal=CAP;S.steps=0;S.mins=0;S.log=[];S.earned=0}
 S.inv=S.inv||{};S.log=S.log||[];S.earned=S.earned||0;S.mins=S.mins||0;S.cust=S.cust||{};
-var known=ITEMS.map(function(i){return i.id});S.log=S.log.filter(function(l){return known.indexOf(l.id)>-1||S.cust[l.id]});Object.keys(S.inv).forEach(function(k){if(known.indexOf(k)<0&&!S.cust[k])delete S.inv[k]});
+S.log=S.log.filter(function(l){return l&&l.n&&l.e});
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 var $=function(i){return document.getElementById(i)};
 function toast(t){var e=$("toast");e.textContent=t;e.classList.add("on");clearTimeout(toast.t);toast.t=setTimeout(function(){e.classList.remove("on")},1800)}
@@ -145,55 +148,59 @@ function addSteps(n){n=Math.floor(n);if(!(n>0)){toast("Enter a number of steps")
 var prev=S.steps;S.steps+=n;var g=(Math.floor(S.steps/100)-Math.floor(prev/100))*3;
 if(g>0){S.bal+=g;S.earned+=g;toast("+"+g+" tygers!");pop()}
 else toast("+"+n+" steps");save();render()}
-function buy(id){var it=ITEMS.filter(function(x){return x.id===id})[0];if(!it||S.bal<it.p)return;S.bal-=it.p;S.inv[id]=(S.inv[id]||0)+1;S.log.push({id:id,p:it.p});toast("Bought "+it.n+"!");pop();save();render()}
 function render(){
-$("bal").textContent=S.bal;$("fill").style.width=Math.min(100,S.bal/CAP*100)+"%";
+var neg=S.bal<0;$("bal").textContent=neg?"-"+Math.abs(S.bal):S.bal;$("balsub").textContent=neg?"tygers in debt":"/ "+CAP+" tygers";$("jarlbl").textContent=neg?"you're in debt":"today's jar";document.querySelector(".bal").classList.toggle("debt",neg);$("fill").style.width=Math.max(0,Math.min(100,S.bal/CAP*100))+"%";
 $("steps").textContent=S.steps.toLocaleString();
 $("mins").textContent=S.mins;var rm=S.mins%10;$("minfill").style.width=(rm*10)+"%";$("nextm").textContent=(10-rm)+" more minutes for the next 6 tygers";
 var r=S.steps%100;$("stepfill").style.width=r+"%";$("next").textContent=(100-r)+" more steps for the next 3 tygers";
-$("shop").innerHTML=ITEMS.map(function(i){return '<div class="item"><div class="e">'+i.e+'</div><p>'+i.n+'</p><small>'+i.p+' tygers</small><button data-b="'+i.id+'"'+(S.bal<i.p?" disabled":"")+'>Buy</button></div>'}).join("");
-var bi=ITEMS.filter(function(i){return S.inv[i.id]}).map(function(i){return{e:i.e,n:i.n,q:S.inv[i.id]}}).concat(Object.keys(S.cust).filter(function(k){return S.inv[k]}).map(function(k){return{e:"✨",n:S.cust[k].n+" ("+S.cust[k].p+")",q:S.inv[k]}}));
-var h=bi.map(function(b){return "<span>"+b.e+" "+esc(b.n)+" ×"+b.q+"</span>"}).join("");
+var h=S.log.map(function(l,i){return '<button class="chip" data-e="'+i+'">'+l.e+" "+esc(l.n)+" ("+l.p+")</button>"}).join("");
 $("bag").innerHTML=h||'<p class="note">Nothing yet. Buy something from the shop.</p>'}
 document.addEventListener("click",function(e){var t=e.target.closest("button");if(!t)return;
-if(t.dataset.s)addSteps(+t.dataset.s);else if(t.dataset.b)buy(t.dataset.b);
+if(t.dataset.s)addSteps(+t.dataset.s);
 else if(t.id==="add"){addSteps(+$("custom").value);$("custom").value=""}
 else if(t.id==="buycustom")buyCustom();
 else if(t.id==="addmin"){addMins(+$("custommin").value);$("custommin").value=""}
-else if(t.dataset.a)act(t.dataset.a)});
+else if(t.dataset.e!==undefined)act("edit",+t.dataset.e);
+else if(t.dataset.a)act(t.dataset.a,+t.dataset.i)});
 function addMins(n){n=Math.floor(n);if(!(n>0)){toast("Enter a number of minutes");return}
 var prev=S.mins;S.mins+=n;var g=(Math.floor(S.mins/10)-Math.floor(prev/10))*6;
 if(g>0){S.bal+=g;S.earned+=g;toast("+"+g+" tygers!");pop()}else toast("+"+n+" minutes");save();render()}
 function fmt(){return new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}
 function spent(){return S.log.reduce(function(a,l){return a+l.p},0)}
-function info(l){var f=ITEMS.filter(function(i){return i.id===l.id})[0];return f||{id:l.id,n:(S.cust[l.id]||{}).n||"Item",e:"✨",p:l.p}}
-function agg(){var m={},o=[];S.log.forEach(function(l){if(!m[l.id]){m[l.id]={i:info(l),q:0};o.push(m[l.id])}m[l.id].q++});return o}
+function agg(){var m={},o=[];S.log.forEach(function(l){if(!m[l.id]){m[l.id]={i:{n:l.n,p:l.p},q:0,e:[]};o.push(m[l.id])}m[l.id].q++;m[l.id].e.push(l.e)});return o}
 function esc(t){return String(t).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
 function buyCustom(){var n=$("cname").value.trim().slice(0,30),p=Math.floor(+$("cprice").value);
-if(!n){toast("Type an item name");return}if(!(p>0)){toast("Enter a price in tygers");return}
-if(S.bal<p){toast("Not enough tygers");return}
-var id="x_"+n.toLowerCase().replace(/[^a-z0-9]+/g,"-")+"_"+p;S.cust[id]={n:n,p:p};S.bal-=p;S.inv[id]=(S.inv[id]||0)+1;S.log.push({id:id,p:p});
-$("cname").value="";$("cprice").value="";toast("Bought "+n+"!");pop();save();render()}
+if(!n)n="tyger food";if(!(p>0)){toast("Enter a price in tygers");return}
+var e=EMO[Math.floor(Math.random()*EMO.length)];
+S.bal-=p;S.log.push({id:n.toLowerCase()+"_"+p,n:n,p:p,e:e});
+$("cname").value="";$("cprice").value="";toast(e+" Bought "+n+"!"+(S.bal<0?" You're in debt":""));pop();save();render()}
 function ticketHTML(){var a=agg();
 var rows=a.length?a.map(function(x){return '<tr><td>'+x.q+'</td><td>'+esc(x.i.n)+'</td><td class="r">'+x.i.p*x.q+'</td></tr>'}).join(""):'<tr><td colspan="3">No purchases yet</td></tr>';
-return '<div class="tk"><svg class="lg" viewBox="0 0 60 56" aria-hidden="true"><circle cx="14" cy="14" r="10" fill="#F59A4C"/><circle cx="46" cy="14" r="10" fill="#F59A4C"/><circle cx="30" cy="32" r="22" fill="#F59A4C"/><ellipse cx="22" cy="30" rx="3" ry="4" fill="#1E1A17"/><ellipse cx="38" cy="30" rx="3" ry="4" fill="#1E1A17"/></svg><h3>TYGER TICKET</h3><div class="sub">Your day &middot; '+fmt()+'</div><div class="st">'+a.map(function(x){return x.i.e}).join("")+'</div><table><tr><th>QTY</th><th>ITEM</th><th class="r">TYGERS</th></tr>'+rows+'</table><div class="tot"><div class="big"><span>SPENT</span><span>'+spent()+' TYGERS</span></div><div><span>STEPS</span><span>'+S.steps.toLocaleString()+'</span></div><div><span>MINUTES ACTIVE</span><span>'+S.mins+'</span></div><div><span>EARNED</span><span>+'+S.earned+' TYGERS</span></div><div><span>LEFT</span><span>'+S.bal+' / 300</span></div></div><div class="ft">tyger town</div></div>'}
+return '<div class="tk"><svg class="lg" viewBox="0 0 60 56" aria-hidden="true"><circle cx="14" cy="14" r="10" fill="#F59A4C"/><circle cx="46" cy="14" r="10" fill="#F59A4C"/><circle cx="30" cy="32" r="22" fill="#F59A4C"/><ellipse cx="22" cy="30" rx="3" ry="4" fill="#1E1A17"/><ellipse cx="38" cy="30" rx="3" ry="4" fill="#1E1A17"/></svg><h3>TYGER TICKET</h3><div class="sub">Your day &middot; '+fmt()+'</div><div class="st">'+a.map(function(x){return x.e.join("")}).join("")+'</div><table><tr><th>QTY</th><th>ITEM</th><th class="r">TYGERS</th></tr>'+rows+'</table><div class="tot"><div class="big"><span>SPENT</span><span>'+spent()+' TYGERS</span></div><div><span>STEPS</span><span>'+S.steps.toLocaleString()+'</span></div><div><span>MINUTES ACTIVE</span><span>'+S.mins+'</span></div><div><span>EARNED</span><span>+'+S.earned+' TYGERS</span></div><div><span>'+(S.bal<0?'IN DEBT':'LEFT')+'</span><span>'+(S.bal<0?Math.abs(S.bal)+' TYGERS':S.bal+' / 300')+'</span></div></div><div class="ft">tyger town</div></div>'}
 function ticketText(){var L=["TYGER TICKET","Your day: "+fmt(),""],a=agg();
 if(a.length)a.forEach(function(x){L.push(x.q+" x "+x.i.n+" - "+x.i.p*x.q+" tygers")});else L.push("No purchases yet");
-L.push("","SPENT: "+spent()+" tygers","STEPS: "+S.steps,"MINUTES ACTIVE: "+S.mins,"EARNED: +"+S.earned+" tygers","LEFT: "+S.bal+" / 300","","tyger town");return L.join("\n")}
+L.push("","SPENT: "+spent()+" tygers","STEPS: "+S.steps,"MINUTES ACTIVE: "+S.mins,"EARNED: +"+S.earned+" tygers",(S.bal<0?"IN DEBT: "+Math.abs(S.bal)+" tygers":"LEFT: "+S.bal+" / 300"),"","tyger town");return L.join("\n")}
 function openDlg(h){$("dlg").innerHTML=h;$("ov").classList.add("on");var b=$("dlg").querySelector("button");if(b)b.focus()}
 function closeDlg(){$("ov").classList.remove("on")}
-function act(a){
+function act(a,idx){
 if(a==="reset")openDlg('<h3>Reset day?</h3><p class="note" style="margin:0 0 14px">Your jar refills to 300 tygers, and today&#39;s steps and ticket are cleared. Your bag is emptied too.</p><div class="row"><button data-a="close">Keep my day</button><button class="go" data-a="doreset">Reset day</button></div>');
 else if(a==="doreset"){S.bal=CAP;S.steps=0;S.mins=0;S.log=[];S.earned=0;S.inv={};S.cust={};save();render();closeDlg();toast("New day, 300 tygers!");pop()}
 else if(a==="export")openDlg(ticketHTML()+'<div class="row"><button data-a="close">Close</button><button class="go" data-a="copy">Copy text</button>'+(navigator.share?'<button class="go" data-a="share">Share</button>':"")+'</div><p class="note">Tip: screenshot the ticket to save it as a picture.</p>');
 else if(a==="editsteps"){openDlg('<h3>Edit steps</h3><p class="note" style="margin:0 0 10px">Set today&#39;s total. Tygers from steps are adjusted to match.</p><input id="fixv" type="number" min="0" inputmode="numeric" value="'+S.steps+'" aria-label="Steps today"><div class="row"><button data-a="close">Cancel</button><button class="go" data-a="savesteps">Save steps</button></div>');$("fixv").focus();$("fixv").select()}
 else if(a==="savesteps"){var raw=$("fixv").value,v=Math.floor(+raw);
 if(raw===""||!(v>=0)){toast("Enter a number of steps");return}
-var d=(Math.floor(v/100)-Math.floor(S.steps/100))*3;S.steps=v;S.bal=Math.max(0,S.bal+d);S.earned=Math.max(0,S.earned+d);save();render();closeDlg();toast("Steps set to "+v.toLocaleString()+(d?" ("+(d>0?"+":"")+d+" tygers)":""))}
+var d=(Math.floor(v/100)-Math.floor(S.steps/100))*3;S.steps=v;S.bal+=d;S.earned=Math.max(0,S.earned+d);save();render();closeDlg();toast("Steps set to "+v.toLocaleString()+(d?" ("+(d>0?"+":"")+d+" tygers)":""))}
 else if(a==="editmins"){openDlg('<h3>Edit minutes</h3><p class="note" style="margin:0 0 10px">Set today&#39;s total. Tygers from minutes are adjusted to match.</p><input id="fixm" type="number" min="0" inputmode="numeric" value="'+S.mins+'" aria-label="Active minutes today"><div class="row"><button data-a="close">Cancel</button><button class="go" data-a="savemins">Save minutes</button></div>');$("fixm").focus();$("fixm").select()}
 else if(a==="savemins"){var rw=$("fixm").value,m=Math.floor(+rw);
 if(rw===""||!(m>=0)){toast("Enter a number of minutes");return}
-var dd=(Math.floor(m/10)-Math.floor(S.mins/10))*6;S.mins=m;S.bal=Math.max(0,S.bal+dd);S.earned=Math.max(0,S.earned+dd);save();render();closeDlg();toast("Minutes set to "+m+(dd?" ("+(dd>0?"+":"")+dd+" tygers)":""))}
+var dd=(Math.floor(m/10)-Math.floor(S.mins/10))*6;S.mins=m;S.bal+=dd;S.earned=Math.max(0,S.earned+dd);save();render();closeDlg();toast("Minutes set to "+m+(dd?" ("+(dd>0?"+":"")+dd+" tygers)":""))}
+else if(a==="edit"){var l=S.log[idx];if(!l)return;openDlg('<h3>Edit item</h3><input id="en" type="text" maxlength="30" value="'+esc(l.n)+'" aria-label="Item name"><div class="row"><input id="ep" type="number" min="1" inputmode="numeric" value="'+l.p+'" aria-label="Tygers"></div><div class="row"><button data-a="close">Cancel</button><button data-a="del" data-i="'+idx+'">Remove</button><button class="go" data-a="saveitem" data-i="'+idx+'">Save</button></div>')}
+else if(a==="saveitem"){var it=S.log[idx];if(!it)return;var nn=$("en").value.trim().slice(0,30)||"tyger food",pp=Math.floor(+$("ep").value);
+if(!(pp>0)){toast("Enter a price in tygers");return}
+S.bal+=it.p-pp;it.n=nn;it.p=pp;it.id=nn.toLowerCase()+"_"+pp;save();render();closeDlg();toast("Updated")}
+else if(a==="del"){var dl=S.log[idx];if(!dl)return;S.bal+=dl.p;S.log.splice(idx,1);save();render();closeDlg();toast("Removed, tygers refunded")}
+else if(a==="editjar")openDlg('<h3>Edit tygers</h3><p class="note" style="margin:0 0 10px">Set your jar total. Use a negative number for debt.</p><input id="ej" type="number" inputmode="numeric" value="'+S.bal+'" aria-label="Tygers in jar"><div class="row"><button data-a="close">Cancel</button><button class="go" data-a="savejar">Save tygers</button></div>');
+else if(a==="savejar"){var rj=$("ej").value,v=Math.round(+rj);if(rj===""||isNaN(v)){toast("Enter a number");return}S.bal=v;save();render();closeDlg();toast("Jar set to "+v)}
 else if(a==="close")closeDlg();
 else if(a==="copy"){var t=ticketText();var ok=function(){toast("Copied!")};
 var fb=function(){var x=document.createElement("textarea");x.value=t;document.body.appendChild(x);x.select();try{document.execCommand("copy");ok()}catch(e){toast("Couldn't copy, try a screenshot")}x.remove()};
